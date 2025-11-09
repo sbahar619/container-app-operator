@@ -30,9 +30,9 @@ func IsDNSRecordAvailable(ctx context.Context, k8sClient client.Client, name, na
 	}
 
 	if dnsRecord.Status.Conditions != nil {
-    readyCondition := dnsRecord.Status.GetCondition(xpv1.TypeReady)
-    available = readyCondition.Status == corev1.ConditionTrue && readyCondition.Reason == xpv1.ReasonAvailable
-}
+		readyCondition := dnsRecord.Status.GetCondition(xpv1.TypeReady)
+		available = readyCondition.Status == corev1.ConditionTrue && readyCondition.Reason == xpv1.ReasonAvailable
+	}
 
 	return available, nil
 }
