@@ -64,7 +64,7 @@ func (r DNSRecordManager) prepareResource(capp cappv1alpha1.Capp) (dnsrecordv1al
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resourceName,
-			Namespace: capp.Namespace, // CRITICAL: Must set namespace for namespaced resources
+			Namespace: capp.Namespace,
 			Labels: map[string]string{
 				utils.CappResourceKey:   capp.Name,
 				utils.CappNamespaceKey:  capp.Namespace,
