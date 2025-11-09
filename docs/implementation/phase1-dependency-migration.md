@@ -424,21 +424,24 @@ if dnsRecord.Status.Conditions != nil {
 import (
     // REMOVE: xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
     xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"  // ADD this
+    corev1 "k8s.io/api/core/v1"  // ADD this - for ConditionStatus constants
     // ... other imports remain unchanged ...
 )
 
 // In IsDNSRecordAvailable function (around line 31-34):
 if dnsRecord.Status.Conditions != nil {
     readyCondition := dnsRecord.Status.GetCondition(xpv1.TypeReady)
-    available = readyCondition.Status == xpv1.ConditionTrue && readyCondition.Reason == xpv1.ReasonAvailable
+    available = readyCondition.Status == corev1.ConditionTrue
 }
 ```
 
 **Changes:**
 1. **REMOVE** old import: `xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"`
 2. **ADD** new import: `xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"` (note: v1 API but from v2 module path)
-3. Replace all uses of `xpcommonv1` with `xpv1`
-4. Update condition checking: use `.Status == xpv1.ConditionTrue && .Reason == xpv1.ReasonAvailable` instead of `.Equal()` method
+3. **ADD** new import: `corev1 "k8s.io/api/core/v1"` for Kubernetes standard condition constants
+4. Replace all uses of `xpcommonv1` with `xpv1`
+5. Update condition checking: use `.Status == corev1.ConditionTrue` instead of `.Equal()` method
+6. **IMPORTANT**: Crossplane Runtime v2 uses standard Kubernetes `corev1.ConditionStatus` type instead of crossplane-specific condition constants
 
 ---
 
