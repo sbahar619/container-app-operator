@@ -53,19 +53,6 @@ Run:
 make manifests
 ```
 
-If your environment uses Go 1.24.x and generation fails due to swiss map errors, use one of:
-
-```bash
-# Option A: Disable swiss maps just for generation
-GOEXPERIMENT=noswissmap make manifests
-
-# Option B: Run controller-gen via Docker with Go 1.23.x (example)
-docker run --rm -v "$PWD":/workspace -w /workspace golang:1.23 \
-  bash -lc 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.4 && \
-  $(go env GOPATH)/bin/controller-gen rbac:roleName=manager-role crd:allowDangerousTypes=true webhook paths="./..." output:crd:artifacts:config=config/crd/bases'
-```
-
-
 ### Step 3: Verify generated RBAC
 
 - File: `config/rbac/role.yaml`
