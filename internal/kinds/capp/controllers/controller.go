@@ -67,7 +67,7 @@ type CappReconciler struct {
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;update;create;patch
 // +kubebuilder:rbac:groups="events.k8s.io",resources=events,verbs=get;list;watch;update;create;patch;
 // +kubebuilder:rbac:groups="nfspvc.dana.io",resources=nfspvcs,verbs=get;list;watch;update;create;delete
-// +kubebuilder:rbac:groups="record.dns.crossplane.io",resources=cnamerecords,verbs=get;list;watch;update;create;delete
+// +kubebuilder:rbac:groups="record.dns-v2.crossplane.io",resources=cnamerecords,verbs=get;list;watch;update;create;delete
 // +kubebuilder:rbac:groups="cert-manager.io",resources=certificates,verbs=get;list;watch;update;create;delete
 
 // SetupWithManager sets up the controller with the Manager.
