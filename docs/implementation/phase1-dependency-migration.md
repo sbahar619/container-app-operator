@@ -4,12 +4,13 @@
 
 This document provides detailed implementation steps for Phase 1 of the CNAMERecord migration from provider-dns v0.1.3 (cluster-scoped) to provider-dns-v2 v1.0.1 (namespaced).
 
-**Objective:** Update all Go module dependencies and import paths to use provider-dns-v2 without changing functionality.
+**Objective:** Update all Go module dependencies and import paths to use provider-dns-v2, including Crossplane Runtime v2 API changes.
 
 **Success Criteria:** 
 - `make build` completes successfully
 - All import statements reference provider-dns-v2
-- No compilation errors related to DNS types
+- Crossplane Runtime v2 APIs properly integrated
+- No compilation errors related to DNS types or Crossplane APIs
 
 ## API Compatibility Verification
 
@@ -266,6 +267,199 @@ dnsrecordv1alpha1 "github.com/dana-team/provider-dns-v2/apis/namespaced/record/v
 
 ---
 
+### Step 2.5: Update Crossplane Runtime API References
+
+**CRITICAL:** Provider-dns-v2 uses **Crossplane Runtime v2** instead of v1. This requires additional code changes beyond import updates.
+
+#### Breaking Change: API Version Upgrade
+
+Provider-dns-v2 `CNAMERecordSpec` embeds `v2.ManagedResourceSpec` (not `v1.ResourceSpec`), which means:
+- Different field access patterns
+- Different condition checking APIs
+- Need to import both v1 and v2 APIs from crossplane-runtime
+
+#### 2.5.1 Update DNS Record Manager
+
+**File:** `internal/kinds/capp/resourcemanagers/dnsrecord.go`
+
+**Current (lines ~10, 79-83):**
+```go
+import (
+    xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"  // OLD - will be removed
+    // ... other imports ...
+)
+
+// In prepareResource function:
+Spec: dnsrecordv1alpha1.CNAMERecordSpec{
+    ForProvider: dnsrecordv1alpha1.CNAMERecordParameters{
+        Name:  &recordName,
+        Zone:  &zone,
+        Cname: &cname,
+    },
+    ResourceSpec: xpcommonv1.ResourceSpec{
+        ProviderConfigReference: &xpcommonv1.Reference{
+            Name: xpProvider,
+        },
+    },
+},
+```
+
+**Target:**
+```go
+import (
+    // REMOVE: xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+    xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"  // ADD this
+    // ... other imports remain unchanged ...
+)
+
+// In prepareResource function (around line 63-87):
+dnsRecord := dnsrecordv1alpha1.CNAMERecord{
+    TypeMeta: metav1.TypeMeta{},
+    ObjectMeta: metav1.ObjectMeta{
+        Name:      resourceName,
+        Namespace: capp.Namespace,  // CRITICAL: Must set namespace for namespaced resources
+        Labels: map[string]string{
+            utils.CappResourceKey:   capp.Name,
+            utils.CappNamespaceKey:  capp.Namespace,
+            utils.ManagedByLabelKey: utils.CappKey,
+        },
+    },
+    Spec: dnsrecordv1alpha1.CNAMERecordSpec{
+        ForProvider: dnsrecordv1alpha1.CNAMERecordParameters{
+            Name:  &recordName,
+            Zone:  &zone,
+            Cname: &cname,
+        },
+    },
+}
+// Set ProviderConfigReference on the embedded ManagedResourceSpec
+dnsRecord.Spec.ProviderConfigReference = &xpv1.ProviderConfigReference{Name: xpProvider}
+
+return dnsRecord, nil
+```
+
+**Changes:**
+1. **REMOVE** old import: `xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"`
+2. **ADD** new import: `xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"` (note: v1 API from v2 module)
+3. **ADD** `Namespace: capp.Namespace` to ObjectMeta (CRITICAL for namespaced resources)
+4. Remove the inline `ResourceSpec` struct literal from CNAMERecordSpec
+5. Set `ProviderConfigReference` on the embedded field after constructing the main struct
+6. Use `xpv1.ProviderConfigReference` instead of `xpcommonv1.Reference`
+
+---
+
+#### 2.5.2 Update GetBareDNSRecord Helper (Namespace Support)
+
+**File:** `internal/kinds/capp/resourceclient/resourcepreparers.go`
+
+**Current (line ~74-79):**
+```go
+func GetBareDNSRecord(name string) dnsrecordv1alpha1.CNAMERecord {
+    return dnsrecordv1alpha1.CNAMERecord{
+        ObjectMeta: metav1.ObjectMeta{
+            Name: name,
+        },
+    }
+}
+```
+
+**Target:**
+```go
+func GetBareDNSRecord(name, namespace string) dnsrecordv1alpha1.CNAMERecord {
+    return dnsrecordv1alpha1.CNAMERecord{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      name,
+            Namespace: namespace,
+        },
+    }
+}
+```
+
+**Changes:**
+1. Add `namespace string` parameter to function signature
+2. Set `Namespace: namespace` in ObjectMeta
+
+**Then update all callers:**
+
+1. **In `dnsrecord.go` line ~92 (CleanUp function):**
+   ```go
+   // OLD:
+   dnsRecord := rclient.GetBareDNSRecord(capp.Status.RouteStatus.DomainMappingObjectStatus.URL.Host)
+   
+   // NEW:
+   dnsRecord := rclient.GetBareDNSRecord(capp.Status.RouteStatus.DomainMappingObjectStatus.URL.Host, capp.Namespace)
+   ```
+
+2. **In `dnsrecord.go` line ~213 (deletePreviousDNSRecords function):**
+   ```go
+   // OLD:
+   recordset := rclient.GetBareDNSRecord(dnsRecord.Name)
+   
+   // NEW:
+   recordset := rclient.GetBareDNSRecord(dnsRecord.Name, dnsRecord.Namespace)
+   ```
+
+---
+
+#### 2.5.3 Update Route Utilities
+
+**File:** `internal/kinds/capp/utils/route.go`
+
+**Current (lines ~12, 31-34):**
+```go
+import (
+    xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"  // OLD - will be removed
+    // ... other imports ...
+)
+
+// In IsDNSRecordAvailable function:
+if dnsRecord.Status.Conditions != nil {
+    readyCondition := dnsRecord.Status.GetCondition(xpcommonv1.TypeReady)
+    available = readyCondition.Equal(xpcommonv1.Available())
+}
+```
+
+**Target:**
+```go
+import (
+    // REMOVE: xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+    xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"  // ADD this
+    // ... other imports remain unchanged ...
+)
+
+// In IsDNSRecordAvailable function (around line 31-34):
+if dnsRecord.Status.Conditions != nil {
+    readyCondition := dnsRecord.Status.GetCondition(xpv1.TypeReady)
+    available = readyCondition.Status == xpv1.ConditionTrue && readyCondition.Reason == xpv1.ReasonAvailable
+}
+```
+
+**Changes:**
+1. **REMOVE** old import: `xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"`
+2. **ADD** new import: `xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"` (note: v1 API but from v2 module path)
+3. Replace all uses of `xpcommonv1` with `xpv1`
+4. Update condition checking: use `.Status == xpv1.ConditionTrue && .Reason == xpv1.ReasonAvailable` instead of `.Equal()` method
+
+---
+
+#### 2.5.4 Update go.mod (if needed)
+
+Check if crossplane-runtime v2 is already in your dependencies:
+
+```bash
+grep "crossplane-runtime" go.mod
+```
+
+If you see only v1 (e.g., `github.com/crossplane/crossplane-runtime v1.x.x`), you need to add v2:
+
+```bash
+go get github.com/crossplane/crossplane-runtime/v2@latest
+```
+
+**Note:** You may have both v1 and v2 dependencies - this is normal as they're separate module paths.
+
+---
+
 ### Step 3: Resolve Dependencies
 
 After all import paths are updated:
@@ -334,9 +528,17 @@ make build
    - Cause: Import path incorrect or module not downloaded
    - Fix: Verify import path matches v2 repo structure
 
-3. **Field compatibility errors**
-   - Cause: v2 changed struct fields
-   - Fix: Update field references to match v2 API
+3. **"unknown field ResourceSpec in CNAMERecordSpec"**
+   - Cause: v2 embeds `v2.ManagedResourceSpec` differently than v1
+   - Fix: Set `ProviderConfigReference` after struct construction (see Step 2.5.1)
+
+4. **"undefined: xpcommonv1.ResourceSpec"**
+   - Cause: Crossplane Runtime v2 API changes
+   - Fix: Use `xpv2.Reference` from crossplane-runtime/v2 (see Step 2.5)
+
+5. **".Equal undefined (type xpv1.Condition has no field or method Equal)"**
+   - Cause: v2 API condition checking changed
+   - Fix: Use `.Status == xpv1.ConditionTrue` instead (see Step 2.5.2)
 
 ---
 
@@ -348,9 +550,13 @@ After completing all steps:
 - [ ] `go.mod` does NOT contain `provider-dns v0.1.3` in direct dependencies
 - [ ] All 10 source files updated with new import path
 - [ ] Import alias corrected from `dnsvrecord1alpha1` to `dnsrecordv1alpha1`
+- [ ] Crossplane Runtime v2 imports updated in `dnsrecord.go`
+- [ ] Crossplane Runtime v2 imports updated in `route.go`
+- [ ] `ProviderConfigReference` set correctly using `xpv2.Reference`
+- [ ] Condition checking updated to use v2 API patterns
 - [ ] `go mod tidy` completes without errors
 - [ ] `make build` completes successfully
-- [ ] No compilation errors related to DNS types
+- [ ] No compilation errors related to DNS types or Crossplane APIs
 - [ ] Generated binary exists in expected location
 
 ---
@@ -414,11 +620,16 @@ This implementation follows project [Coding Standards](../project/CODING_STANDAR
 
 ## Notes for Phase 2
 
-Phase 1 only updates imports - it does NOT:
-- Add namespace to CNAMERecord ObjectMeta
-- Change Get/List/Delete operation scopes
-- Modify helper function signatures
-- Update RBAC configurations
+Phase 1 focuses on API compatibility - it updates:
+- Import paths to provider-dns-v2
+- Crossplane Runtime v1 → v2 API usage
+- Type compatibility for CNAMERecord structs
 
-These changes are intentionally deferred to Phase 2 to maintain clear separation of concerns and enable incremental validation.
+Phase 1 does NOT change functional behavior:
+- CNAMERecord namespace is not yet added to ObjectMeta (Phase 2)
+- Get/List/Delete operations remain cluster-scoped (Phase 2)  
+- Helper function signatures not changed for namespace support (Phase 2)
+- RBAC configurations remain unchanged (Phase 3)
+
+These changes are intentionally deferred to maintain clear separation of concerns and enable incremental validation.
 
