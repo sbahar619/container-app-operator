@@ -463,39 +463,60 @@ go doc github.com/dana-team/provider-dns-v2/apis/namespaced/record/v1alpha1.CNAM
 
 ### Step 5: Build Verification
 
-```bash
-# Regenerate code if needed
-make generate
+**Note:** Phase 1 focuses on dependency migration and compilation. If you encounter issues with `make generate` (e.g., Go toolchain bugs), you can skip it if no API types were modified.
 
-# Build the operator
+#### Option A: Full Build with Makefile (Recommended)
+
+```bash
+# Full build including code generation
 make build
+```
+
+This runs `make generate` → `make manifests` → build automatically.
+
+#### Option B: Direct Build (If make generate fails)
+
+If `make generate` fails due to toolchain issues and you **only changed import paths** (no API type changes):
+
+```bash
+# Format and vet
+go fmt ./...
+go vet ./...
+
+# Build directly
+go build -o bin/manager cmd/main.go
 ```
 
 **Expected Output:**
 - No compilation errors
-- Binary created successfully
+- Binary created successfully at `bin/manager`
 
 **Common Issues:**
 
-1. **"undefined: dnsrecordv1alpha1.CNAMERecordStatus"**
+1. **`make generate` fails with "mapiterinit redeclared" errors**
+   - Cause: Go 1.24.x experimental versions have known bugs with swiss maps
+   - Fix: Use Option B (direct build) or downgrade to stable Go 1.23.x
+   - This is a Go toolchain issue, not a code issue
+
+2. **"undefined: dnsrecordv1alpha1.CNAMERecordStatus"**
    - Cause: v2 API renamed or removed this type
    - Fix: Check v2 API structure and update code accordingly
 
-2. **"cannot find package"**
+3. **"cannot find package"**
    - Cause: Import path incorrect or module not downloaded
    - Fix: Verify import path matches v2 repo structure
 
-3. **"unknown field ResourceSpec in CNAMERecordSpec"**
+4. **"unknown field ResourceSpec in CNAMERecordSpec"**
    - Cause: v2 embeds `v2.ManagedResourceSpec` differently than v1
    - Fix: Set `ProviderConfigReference` after struct construction (see Step 2.5.1)
 
-4. **"undefined: xpcommonv1.ResourceSpec"**
+5. **"undefined: xpcommonv1.ResourceSpec"**
    - Cause: Crossplane Runtime v2 API changes
-   - Fix: Use `xpv2.Reference` from crossplane-runtime/v2 (see Step 2.5)
+   - Fix: Use `xpv1.ProviderConfigReference` from crossplane-runtime/v2 (see Step 2.5)
 
-5. **".Equal undefined (type xpv1.Condition has no field or method Equal)"**
-   - Cause: v2 API condition checking changed
-   - Fix: Use `.Status == xpv1.ConditionTrue` instead (see Step 2.5.2)
+6. **".Equal undefined (type xpv1.Condition has no field or method Equal)"**
+   - Cause: Crossplane Runtime v2 uses standard Kubernetes condition types
+   - Fix: Use `.Status == corev1.ConditionTrue` with `corev1 "k8s.io/api/core/v1"` import (see Step 2.6.1)
 
 ---
 
@@ -507,12 +528,13 @@ After completing all steps:
 - [ ] `go.mod` does NOT contain `provider-dns v0.1.3` in direct dependencies
 - [ ] All 10 source files updated with new import path
 - [ ] Import alias corrected from `dnsvrecord1alpha1` to `dnsrecordv1alpha1`
-- [ ] Crossplane Runtime v2 imports updated in `dnsrecord.go`
-- [ ] Crossplane Runtime v2 imports updated in `route.go`
-- [ ] `ProviderConfigReference` set correctly using `xpv2.Reference`
-- [ ] Condition checking updated to use v2 API patterns
+- [ ] Crossplane Runtime v2 imports updated in `dnsrecord.go` (`xpv1` from v2 module)
+- [ ] Crossplane Runtime v2 imports updated in `route.go` (`xpv1` from v2 module)
+- [ ] `corev1` import added to `route.go` for condition status constants
+- [ ] `ProviderConfigReference` set correctly using `xpv1.ProviderConfigReference`
+- [ ] Condition checking updated to use `corev1.ConditionTrue`
 - [ ] `go mod tidy` completes without errors
-- [ ] `make build` completes successfully
+- [ ] `make build` OR `go build -o bin/manager cmd/main.go` completes successfully
 - [ ] No compilation errors related to DNS types or Crossplane APIs
 - [ ] Generated binary exists in expected location
 
