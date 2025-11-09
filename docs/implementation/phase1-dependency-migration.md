@@ -445,35 +445,21 @@ go doc github.com/dana-team/provider-dns-v2/apis/namespaced/record/v1alpha1.CNAM
 
 ### Step 5: Build Verification
 
-**Note:** Phase 1 focuses on dependency migration and compilation. If you encounter issues with `make generate` (e.g., Go toolchain bugs), you can skip it if no API types were modified.
-
-#### Option A: Full Build with Makefile (Recommended)
+Try full build first:
 
 ```bash
-# Full build including code generation
 make build
 ```
 
-This runs `make generate` → `make manifests` → build automatically.
-
-#### Option B: Direct Build (If make generate fails)
-
-If `make generate` fails due to toolchain issues and you **only changed import paths** (no API type changes):
+If `make generate` fails (e.g., Go 1.24.x toolchain bugs), build directly:
 
 ```bash
-# Format and vet
 go fmt ./...
 go vet ./...
-
-# Build directly
 go build -o bin/manager cmd/main.go
 ```
 
-**Expected Output:**
-- No compilation errors
-- Binary created successfully at `bin/manager`
-
-**Troubleshooting:** If `make generate` fails with Go 1.24.x toolchain errors, use Option B (direct build).
+**Expected:** Binary created at `bin/manager` with no compilation errors.
 
 ---
 
