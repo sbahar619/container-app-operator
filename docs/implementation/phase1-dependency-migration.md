@@ -12,29 +12,11 @@ This document provides detailed implementation steps for Phase 1 of the CNAMERec
 - Crossplane Runtime v2 APIs properly integrated
 - No compilation errors related to DNS types or Crossplane APIs
 
-## API Compatibility Verification
-
-**Status:** ✅ Verified compatible
-
-The provider-dns-v2 namespaced API has been verified to contain all required types:
-
-| Type | Status | Notes |
-|------|--------|-------|
-| CNAMERecord | ✅ Exists | Namespaced resource (`scope=Namespaced`) |
-| CNAMERecordSpec | ✅ Compatible | Standard Crossplane resource spec |
-| CNAMERecordStatus | ✅ Compatible | Contains `ResourceStatus` + `AtProvider` fields |
-| CNAMERecordList | ✅ Exists | Standard Kubernetes list type |
+## API Reference
 
 **Import Path:** `github.com/dana-team/provider-dns-v2/apis/namespaced/record/v1alpha1`
 
-**API Group:** `record.dns-v2.m.crossplane.io/v1alpha1`
-
-## Prerequisites
-
-- Understanding of Go module management
-- Access to provider-dns-v2 v1.0.1 repository
-- Familiarity with operator codebase structure
-- Review [Coding Standards](../project/CODING_STANDARDS.md) before implementation
+**Status:** ✅ All required types verified (CNAMERecord, CNAMERecordSpec, CNAMERecordStatus, CNAMERecordList)
 
 ## Implementation Steps
 
@@ -491,32 +473,7 @@ go build -o bin/manager cmd/main.go
 - No compilation errors
 - Binary created successfully at `bin/manager`
 
-**Common Issues:**
-
-1. **`make generate` fails with "mapiterinit redeclared" errors**
-   - Cause: Go 1.24.x experimental versions have known bugs with swiss maps
-   - Fix: Use Option B (direct build) or downgrade to stable Go 1.23.x
-   - This is a Go toolchain issue, not a code issue
-
-2. **"undefined: dnsrecordv1alpha1.CNAMERecordStatus"**
-   - Cause: v2 API renamed or removed this type
-   - Fix: Check v2 API structure and update code accordingly
-
-3. **"cannot find package"**
-   - Cause: Import path incorrect or module not downloaded
-   - Fix: Verify import path matches v2 repo structure
-
-4. **"unknown field ResourceSpec in CNAMERecordSpec"**
-   - Cause: v2 embeds `v2.ManagedResourceSpec` differently than v1
-   - Fix: Set `ProviderConfigReference` after struct construction (see Step 2.5.1)
-
-5. **"undefined: xpcommonv1.ResourceSpec"**
-   - Cause: Crossplane Runtime v2 API changes
-   - Fix: Use `xpv1.ProviderConfigReference` from crossplane-runtime/v2 (see Step 2.5)
-
-6. **".Equal undefined (type xpv1.Condition has no field or method Equal)"**
-   - Cause: Crossplane Runtime v2 uses standard Kubernetes condition types
-   - Fix: Use `.Status == corev1.ConditionTrue` with `corev1 "k8s.io/api/core/v1"` import (see Step 2.6.1)
+**Troubleshooting:** If `make generate` fails with Go 1.24.x toolchain errors, use Option B (direct build).
 
 ---
 
@@ -538,77 +495,24 @@ After completing all steps:
 - [ ] No compilation errors related to DNS types or Crossplane APIs
 - [ ] Generated binary exists in expected location
 
----
-
-## Rollback Procedure
-
-If issues arise and rollback is needed:
-
-```bash
-# Revert all changes
-git checkout go.mod
-git checkout cmd/main.go
-git checkout api/v1alpha1/capp_types.go
-git checkout internal/kinds/capp/resourcemanagers/dnsrecord.go
-git checkout internal/kinds/capp/resourceclient/resourcepreparers.go
-git checkout internal/kinds/capp/controllers/controller.go
-git checkout internal/kinds/capp/status/route.go
-git checkout internal/kinds/capp/utils/route.go
-git checkout test/e2e_tests/helper.go
-git checkout test/e2e_tests/mocks/route.go
-git checkout test/e2e_tests/utils/route_adapter.go  # If updated
-
-# Clean and restore dependencies
-go clean -modcache
-go mod download
-go mod tidy
-```
-
----
 
 ## Next Steps
 
 After Phase 1 completes successfully:
-1. Commit changes with descriptive message
-2. Create PR for review
-3. Proceed to Phase 2: Resource Scoping Implementation
-4. Document any API compatibility issues discovered
+1. Commit changes and create PR for review
+2. Proceed to Phase 2: Resource Scoping Implementation (adding namespace support)
 
 ---
 
-## Coding Standards Compliance
+## Phase 1 Scope
 
-This implementation follows project [Coding Standards](../project/CODING_STANDARDS.md):
+**Includes:**
+- Import paths updated to provider-dns-v2
+- Crossplane Runtime v1 → v2 API migration
+- Code compilation successful
 
-**Minimal Changes:**
-- Phase 1 only updates imports and dependency declarations
-- No logic changes, maintaining existing behavior
-- Smallest necessary modifications to achieve build compatibility
-
-**Clear Variable Names:**
-- Fixes import alias typo: `dnsvrecord1alpha1` → `dnsrecordv1alpha1`
-- Maintains consistent naming convention across all files
-
-**Single Responsibility:**
-- Phase focuses solely on dependency migration
-- Functional changes deferred to subsequent phases
-
-**No Code Duplication:**
-- Standardizes import alias naming across all files
-- Removes inconsistency in naming conventions
-
-## Notes for Phase 2
-
-Phase 1 focuses on API compatibility - it updates:
-- Import paths to provider-dns-v2
-- Crossplane Runtime v1 → v2 API usage
-- Type compatibility for CNAMERecord structs
-
-Phase 1 does NOT change functional behavior:
-- CNAMERecord namespace is not yet added to ObjectMeta (Phase 2)
-- Get/List/Delete operations remain cluster-scoped (Phase 2)  
-- Helper function signatures not changed for namespace support (Phase 2)
-- RBAC configurations remain unchanged (Phase 3)
-
-These changes are intentionally deferred to maintain clear separation of concerns and enable incremental validation.
+**Excludes (deferred to later phases):**
+- Adding namespace to CNAMERecord ObjectMeta (Phase 2)
+- Updating Get/List/Delete to be namespace-scoped (Phase 2)
+- RBAC configuration changes (Phase 3)
 
