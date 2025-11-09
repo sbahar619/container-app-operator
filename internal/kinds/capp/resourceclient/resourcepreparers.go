@@ -71,10 +71,11 @@ func GetBareSyslogNGOutput(name, namespace string) loggingv1beta1.SyslogNGOutput
 }
 
 // GetBareDNSRecord returns a DNSRecord object with only ObjectMeta set.
-func GetBareDNSRecord(name string) dnsrecordv1alpha1.CNAMERecord {
+func GetBareDNSRecord(name, namespace string) dnsrecordv1alpha1.CNAMERecord {
 	return dnsrecordv1alpha1.CNAMERecord{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:      name,
+			Namespace: namespace,
 		},
 	}
 }

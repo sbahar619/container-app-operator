@@ -90,7 +90,7 @@ func (r DNSRecordManager) CleanUp(capp cappv1alpha1.Capp) error {
 	resourceManager := rclient.ResourceManagerClient{Ctx: r.Ctx, K8sclient: r.K8sclient, Log: r.Log}
 
 	if capp.Status.RouteStatus.DomainMappingObjectStatus.URL != nil {
-		dnsRecord := rclient.GetBareDNSRecord(capp.Status.RouteStatus.DomainMappingObjectStatus.URL.Host)
+		dnsRecord := rclient.GetBareDNSRecord(capp.Status.RouteStatus.DomainMappingObjectStatus.URL.Host, capp.Namespace)
 		if err := resourceManager.DeleteResource(&dnsRecord); err != nil {
 			if errors.IsNotFound(err) {
 				return nil
@@ -199,6 +199,7 @@ func (r DNSRecordManager) getPreviousDNSRecords(capp cappv1alpha1.Capp) (dnsreco
 		utils.CappNamespaceKey: capp.Namespace,
 	}
 	listOptions := utils.GetListOptions(set)
+	listOptions.Namespace = capp.Namespace
 
 	if err := r.K8sclient.List(r.Ctx, &dnsRecords, &listOptions); err != nil {
 		return dnsRecords, fmt.Errorf("unable to list DNSRecords of Capp %q: %w", capp.Name, err)
@@ -211,7 +212,7 @@ func (r DNSRecordManager) getPreviousDNSRecords(capp cappv1alpha1.Capp) (dnsreco
 func (r DNSRecordManager) deletePreviousDNSRecords(dnsRecords dnsrecordv1alpha1.CNAMERecordList, resourceManager rclient.ResourceManagerClient, hostname string) error {
 	for _, dnsRecord := range dnsRecords.Items {
 		if dnsRecord.Name != hostname {
-			recordset := rclient.GetBareDNSRecord(dnsRecord.Name)
+			recordset := rclient.GetBareDNSRecord(dnsRecord.Name, dnsRecord.Namespace)
 			if err := resourceManager.DeleteResource(&recordset); err != nil {
 				return err
 			}
