@@ -316,8 +316,8 @@ import (
 dnsRecord := dnsrecordv1alpha1.CNAMERecord{
     TypeMeta: metav1.TypeMeta{},
     ObjectMeta: metav1.ObjectMeta{
-        Name:      resourceName,
-        Namespace: capp.Namespace,  // CRITICAL: Must set namespace for namespaced resources
+        Name: resourceName,
+        // Namespace will be set in Step 2.6.1
         Labels: map[string]string{
             utils.CappResourceKey:   capp.Name,
             utils.CappNamespaceKey:  capp.Namespace,
@@ -341,67 +341,21 @@ return dnsRecord, nil
 **Changes:**
 1. **REMOVE** old import: `xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"`
 2. **ADD** new import: `xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"` (note: v1 API from v2 module)
-3. **ADD** `Namespace: capp.Namespace` to ObjectMeta (CRITICAL for namespaced resources)
-4. Remove the inline `ResourceSpec` struct literal from CNAMERecordSpec
-5. Set `ProviderConfigReference` on the embedded field after constructing the main struct
-6. Use `xpv1.ProviderConfigReference` instead of `xpcommonv1.Reference`
+3. Remove the inline `ResourceSpec` struct literal from CNAMERecordSpec
+4. Set `ProviderConfigReference` on the embedded field after constructing the main struct
+5. Use `xpv1.ProviderConfigReference` instead of `xpcommonv1.Reference`
+
+**Note:** Namespace support (setting `Namespace` in ObjectMeta) will be addressed in **Phase 2** according to the HLD.
 
 ---
 
-#### 2.5.2 Update GetBareDNSRecord Helper (Namespace Support)
+### Step 2.6: Update Crossplane Runtime API References (Continued)
 
-**File:** `internal/kinds/capp/resourceclient/resourcepreparers.go`
-
-**Current (line ~74-79):**
-```go
-func GetBareDNSRecord(name string) dnsrecordv1alpha1.CNAMERecord {
-    return dnsrecordv1alpha1.CNAMERecord{
-        ObjectMeta: metav1.ObjectMeta{
-            Name: name,
-        },
-    }
-}
-```
-
-**Target:**
-```go
-func GetBareDNSRecord(name, namespace string) dnsrecordv1alpha1.CNAMERecord {
-    return dnsrecordv1alpha1.CNAMERecord{
-        ObjectMeta: metav1.ObjectMeta{
-            Name:      name,
-            Namespace: namespace,
-        },
-    }
-}
-```
-
-**Changes:**
-1. Add `namespace string` parameter to function signature
-2. Set `Namespace: namespace` in ObjectMeta
-
-**Then update all callers:**
-
-1. **In `dnsrecord.go` line ~92 (CleanUp function):**
-   ```go
-   // OLD:
-   dnsRecord := rclient.GetBareDNSRecord(capp.Status.RouteStatus.DomainMappingObjectStatus.URL.Host)
-   
-   // NEW:
-   dnsRecord := rclient.GetBareDNSRecord(capp.Status.RouteStatus.DomainMappingObjectStatus.URL.Host, capp.Namespace)
-   ```
-
-2. **In `dnsrecord.go` line ~213 (deletePreviousDNSRecords function):**
-   ```go
-   // OLD:
-   recordset := rclient.GetBareDNSRecord(dnsRecord.Name)
-   
-   // NEW:
-   recordset := rclient.GetBareDNSRecord(dnsRecord.Name, dnsRecord.Namespace)
-   ```
+This continues the Crossplane Runtime v2 API updates from Step 2.5.
 
 ---
 
-#### 2.5.3 Update Route Utilities
+#### 2.6.1 Update Route Utilities
 
 **File:** `internal/kinds/capp/utils/route.go`
 
@@ -445,7 +399,7 @@ if dnsRecord.Status.Conditions != nil {
 
 ---
 
-#### 2.5.4 Update go.mod (if needed)
+#### 2.6.2 Update go.mod (if needed)
 
 Check if crossplane-runtime v2 is already in your dependencies:
 
