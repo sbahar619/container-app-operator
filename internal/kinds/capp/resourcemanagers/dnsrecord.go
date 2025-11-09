@@ -7,7 +7,7 @@ import (
 
 	dnsrecordv1alpha1 "github.com/dana-team/provider-dns-v2/apis/namespaced/record/v1alpha1"
 
-	xpcommonv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	cappv1alpha1 "github.com/dana-team/container-app-operator/api/v1alpha1"
 	rclient "github.com/dana-team/container-app-operator/internal/kinds/capp/resourceclient"
 	"github.com/dana-team/container-app-operator/internal/kinds/capp/utils"
@@ -63,7 +63,8 @@ func (r DNSRecordManager) prepareResource(capp cappv1alpha1.Capp) (dnsrecordv1al
 	dnsRecord := dnsrecordv1alpha1.CNAMERecord{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: resourceName,
+			Name:      resourceName,
+			Namespace: capp.Namespace,  // CRITICAL: Must set namespace for namespaced resources
 			Labels: map[string]string{
 				utils.CappResourceKey:   capp.Name,
 				utils.CappNamespaceKey:  capp.Namespace,
@@ -76,13 +77,10 @@ func (r DNSRecordManager) prepareResource(capp cappv1alpha1.Capp) (dnsrecordv1al
 				Zone:  &zone,
 				Cname: &cname,
 			},
-			ResourceSpec: xpcommonv1.ResourceSpec{
-				ProviderConfigReference: &xpcommonv1.Reference{
-					Name: xpProvider,
-				},
-			},
 		},
 	}
+
+	dnsRecord.Spec.ProviderConfigReference = &xpv1.ProviderConfigReference{Name: xpProvider}
 
 	return dnsRecord, nil
 }
