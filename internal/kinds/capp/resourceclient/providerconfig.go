@@ -13,7 +13,7 @@ import (
 const (
 	providerConfigGroup   = "dns-v2.m.crossplane.io"
 	providerConfigVersion = "v1beta1"
-	providerConfigKind    = "ProviderConfig"
+	ProviderConfigKind    = "ProviderConfig"
 	providerConfigUsageListKind = "ProviderConfigUsageList"
 	providerConfigName    = "default"
 	secretNamespace       = "crossplane-system"
@@ -27,7 +27,7 @@ func newProviderConfig(namespace string) *unstructured.Unstructured {
 	pc.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   providerConfigGroup,
 		Version: providerConfigVersion,
-		Kind:    providerConfigKind,
+		Kind:    ProviderConfigKind,
 	})
 	pc.SetNamespace(namespace)
 	pc.SetName(providerConfigName)
