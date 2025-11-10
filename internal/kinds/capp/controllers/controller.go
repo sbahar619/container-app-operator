@@ -67,8 +67,10 @@ type CappReconciler struct {
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;update;create;patch
 // +kubebuilder:rbac:groups="events.k8s.io",resources=events,verbs=get;list;watch;update;create;patch;
 // +kubebuilder:rbac:groups="nfspvc.dana.io",resources=nfspvcs,verbs=get;list;watch;update;create;delete
-// +kubebuilder:rbac:groups="rrecord.dns-v2.m.crossplane.io",resources=cnamerecords,verbs=get;list;watch;update;create;delete
+// +kubebuilder:rbac:groups="record.dns-v2.m.crossplane.io",resources=cnamerecords,verbs=get;list;watch;update;create;delete
 // +kubebuilder:rbac:groups="cert-manager.io",resources=certificates,verbs=get;list;watch;update;create;delete
+// +kubebuilder:rbac:groups="dns-v2.m.crossplane.io",resources=providerconfigs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="dns-v2.m.crossplane.io",resources=providerconfigusages,verbs=get;list;watch
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CappReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -143,6 +145,7 @@ func (r *CappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	resourceManagers := map[string]rmanagers.ResourceManager{
+		rmanagers.ProviderConfig: rmanagers.ProviderConfigManager{Ctx: ctx, Log: logger, K8sclient: r.Client, EventRecorder: r.EventRecorder},
 		rmanagers.KnativeServing: rmanagers.KnativeServiceManager{Ctx: ctx, Log: logger, K8sclient: r.Client, EventRecorder: r.EventRecorder},
 		rmanagers.DNSRecord:      rmanagers.DNSRecordManager{Ctx: ctx, Log: logger, K8sclient: r.Client, EventRecorder: r.EventRecorder},
 		rmanagers.Certificate:    rmanagers.CertificateManager{Ctx: ctx, Log: logger, K8sclient: r.Client, EventRecorder: r.EventRecorder},

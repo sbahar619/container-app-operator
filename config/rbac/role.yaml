@@ -108,22 +108,42 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - route.openshift.io
-  resources:
-  - routes
-  verbs:
-  - create
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - rrecord.dns-v2.m.crossplane.io
+  - record.dns-v2.m.crossplane.io
   resources:
   - cnamerecords
   verbs:
   - create
   - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - dns-v2.m.crossplane.io
+  resources:
+  - providerconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dns-v2.m.crossplane.io
+  resources:
+  - providerconfigusages
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - create
   - get
   - list
   - update
