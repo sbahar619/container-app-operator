@@ -26,6 +26,7 @@ const (
 	DNSRecord                        = "DNSRecord"
 	eventCappDNSRecordCreationFailed = "DNSRecordCreationFailed"
 	eventCappDNSRecordCreated        = "DNSRecordCreated"
+	ClusterProviderConfigKind        = "ClusterProviderConfig"
 )
 
 type DNSRecordManager struct {
@@ -77,7 +78,7 @@ func (r DNSRecordManager) prepareResource(capp cappv1alpha1.Capp) (dnsrecordv1al
 
 	dnsRecord.Spec.ProviderConfigReference = &xpv1.ProviderConfigReference{
 		Name: "default",
-		Kind: rclient.ClusterProviderConfigKind,
+		Kind: ClusterProviderConfigKind,
 	}
 
 	return dnsRecord, nil
