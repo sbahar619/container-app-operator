@@ -14,6 +14,7 @@ const (
 	providerConfigGroup   = "dns-v2.m.crossplane.io"
 	providerConfigVersion = "v1beta1"
 	ProviderConfigKind    = "ProviderConfig"
+	ClusterProviderConfigKind    = "ClusterProviderConfig"
 	providerConfigUsageListKind = "ProviderConfigUsageList"
 	providerConfigName    = "default"
 	secretNamespace       = "crossplane-system"
