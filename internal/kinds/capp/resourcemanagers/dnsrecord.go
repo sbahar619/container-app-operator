@@ -52,6 +52,11 @@ func (r DNSRecordManager) prepareResource(capp cappv1alpha1.Capp) (dnsrecordv1al
 		return dnsrecordv1alpha1.CNAMERecord{}, err
 	}
 
+	xpProvider, err := utils.GetXPProviderFromConfig(dnsConfig)
+	if err != nil {
+		return dnsrecordv1alpha1.CNAMERecord{}, err
+	}
+
 	resourceName := utils.GenerateResourceName(capp.Spec.RouteSpec.Hostname, zone)
 	recordName := utils.GenerateRecordName(capp.Spec.RouteSpec.Hostname, zone)
 
@@ -75,10 +80,7 @@ func (r DNSRecordManager) prepareResource(capp cappv1alpha1.Capp) (dnsrecordv1al
 		},
 	}
 
-	dnsRecord.Spec.ProviderConfigReference = &xpv1.ProviderConfigReference{
-		Name: "default",
-		Kind: rclient.ProviderConfigKind,
-	}
+	dnsRecord.Spec.ProviderConfigReference = &xpv1.ProviderConfigReference{Name: xpProvider}
 
 	return dnsRecord, nil
 }
