@@ -56,7 +56,6 @@ A Capp Custom Resource consists of several key fields that control different asp
 
 **Functional Requirements**:
 - If `hostname` is specified, the operator creates a DomainMapping, DNS Record, and optionally a Certificate.
-- DNS configuration must be set up in the CappConfig CR in the operator namespace.
 - TLS certificates are automatically provisioned when `tlsEnabled: true`.
 
 ### `logSpec`
