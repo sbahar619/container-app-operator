@@ -69,7 +69,7 @@ A Capp Custom Resource consists of several key fields that control different asp
 - `user`: Username for Elasticsearch authentication
 - `passwordSecret`: Name of the Kubernetes secret containing the Elasticsearch password
 
-**Functional Requirement**: When configured, the operator creates Flow and Output resources to automatically collect logs from your application's stdout and ship them to Elasticsearch.
+**Functional Requirement**: When configured, the operator creates SyslogNGFlow and SyslogNGOutput resources to automatically collect logs from your application's stdout and ship them to Elasticsearch.
 
 ### `volumesSpec`
 
@@ -424,7 +424,7 @@ kubectl create secret generic kafka-analytics-secret \
 
 **Logs not appearing in Elasticsearch**:
 - Verify Elasticsearch credentials in the secret
-- Check the Flow and Output resources: `kubectl get syslogngflow,syslogngoutput -n <namespace>`
+- Check the SyslogNGFlow and SyslogNGOutput resources: `kubectl get syslogngflow,syslogngoutput -n <namespace>`
 - Ensure the logging-operator is running
 
 **Volume mount issues**:
