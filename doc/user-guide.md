@@ -55,7 +55,7 @@ A Capp Custom Resource consists of several key fields that control different asp
 - `routeTimeoutSeconds`: Maximum duration for a request before timeout
 
 **Functional Requirements**:
-- If `hostname` is specified, the operator creates a DomainMapping, DNS Record, and optionally a Certificate.
+- If `hostname` is specified, the operator creates a DomainMapping, CNAMERecord, and optionally a Certificate.
 - TLS certificates are automatically provisioned when `tlsEnabled: true`.
 
 ### `logSpec`
@@ -83,9 +83,7 @@ A Capp Custom Resource consists of several key fields that control different asp
   - `capacity`: Storage size (e.g., `200Gi`)
 
 **Functional Requirements**:
-- The nfspvc-operator must be installed in the cluster.
 - Volume names must match those referenced in `volumeMounts` within the container spec.
-- Knative must be configured to support persistent volumes.
 
 ### `sources`
 
