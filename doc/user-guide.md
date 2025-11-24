@@ -6,103 +6,55 @@
 
 ## Capp CR Specification
 
-A Capp Custom Resource consists of several key fields that control different aspects of your application deployment. Below is a detailed explanation of each field and its functional requirements.
-
 ### `scaleMetric`
-
-**Purpose**: Defines which metric the autoscaler uses to scale your application up or down.
-
-**Values**:
-- `concurrency` (default): Scales based on the number of concurrent requests being processed. Best for HTTP services with varied request durations.
-- `rps`: Scales based on requests per second. Ideal for high-throughput APIs with predictable request patterns.
-- `cpu`: Scales based on CPU utilization percentage. Suitable for CPU-intensive workloads.
-- `memory`: Scales based on memory utilization percentage. Best for memory-intensive applications.
-
-**Functional Requirement**: Must be one of the four supported values. The operator creates the appropriate autoscaler (HPA or KPA) based on this selection.
+Defines which metric the autoscaler uses. Options: `concurrency` (default, best for HTTP services), `rps` (requests per second), `cpu`, or `memory`. The operator creates an appropriate HPA or KPA autoscaler based on this value.
 
 ### `state`
-
-**Purpose**: Controls whether the application workload is running or suspended.
-
-**Values**:
-- `enabled` (default): The application is running and serving traffic.
-- `disabled`: The application is suspended (scaled to zero) but configuration is preserved.
-
-**Functional Requirement**: Use `disabled` to temporarily stop an application without deleting it. This is useful for cost savings during non-peak hours or maintenance windows.
+Controls application state: `enabled` (running, default) or `disabled` (suspended but preserves configuration). Use `disabled` for temporary suspension during maintenance or cost savings.
 
 ### `configurationSpec`
+Defines container specifications including image, environment variables, and resource requirements. Based on Knative's ConfigurationSpec with a `template.spec` containing:
+- `containers`: Container definitions (name, image, env, resources, volumeMounts)
 
-**Purpose**: Defines the container specification for your application, including image, environment variables, and resource requirements.
-
-**Structure**: Based on Knative's ConfigurationSpec, it contains a `template` with a `spec` that includes:
-- `containers`: Array of container definitions
-  - `name`: Container name
-  - `image`: Container image (e.g., `ghcr.io/myorg/myapp:v1.0.0`)
-  - `env`: Environment variables as key-value pairs
-  - `resources`: CPU and memory requests/limits
-  - `volumeMounts`: Mount points for volumes
-
-**Functional Requirement**: At least one container must be specified with a valid image. The container configuration follows standard Kubernetes pod specifications.
+At least one container with a valid image is required. Follows standard Kubernetes pod specifications.
 
 ### `routeSpec`
+Configures custom DNS routing and TLS:
+- `hostname`: Custom DNS name (e.g., `myapp.example.com`)
+- `tlsEnabled`: Enable HTTPS with automatic certificate management
+- `trafficTarget`: Advanced traffic routing for canary/A/B testing
+- `routeTimeoutSeconds`: Request timeout duration
 
-**Purpose**: Configures custom DNS routing and TLS for accessing your application.
-
-**Fields**:
-- `hostname`: Custom DNS name for your application (e.g., `myapp.example.com`)
-- `tlsEnabled`: Boolean to enable/disable HTTPS with automatic certificate management
-- `trafficTarget`: Advanced traffic routing for canary deployments or A/B testing
-- `routeTimeoutSeconds`: Maximum duration for a request before timeout
-
-**Functional Requirements**:
-- If `hostname` is specified, the operator creates a DomainMapping, CNAMERecord, and optionally a Certificate.
-- TLS certificates are automatically provisioned when `tlsEnabled: true`.
+When `hostname` is set, the operator creates DomainMapping, CNAMERecord, and optionally a Certificate resource.
 
 ### `logSpec`
+Configures automatic log shipping to Elasticsearch:
+- `type`: Log destination (currently only `elastic`)
+- `host`: Elasticsearch host address
+- `index`: Elasticsearch index name
+- `user`: Username for authentication
+- `passwordSecret`: Secret name containing the password
 
-**Purpose**: Configures automatic log shipping to Elasticsearch for centralized logging.
-
-**Fields**:
-- `type`: Log destination type (currently only `elastic` is supported)
-- `host`: Elasticsearch host address (IP or hostname)
-- `index`: Elasticsearch index name where logs will be stored
-- `user`: Username for Elasticsearch authentication
-- `passwordSecret`: Name of the Kubernetes secret containing the Elasticsearch password
-
-**Functional Requirement**: When configured, the operator creates SyslogNGFlow and SyslogNGOutput resources to automatically collect logs from your application's stdout and ship them to Elasticsearch.
+Creates SyslogNGFlow and SyslogNGOutput resources to collect logs from stdout.
 
 ### `volumesSpec`
-
-**Purpose**: Defines persistent storage volumes to be mounted in your application containers.
-
-**Structure**:
-- `nfsVolumes`: Array of NFS volume definitions
-  - `name`: Volume name (must match the `volumeMounts` name in container spec)
-  - `server`: NFS server hostname or IP address
-  - `path`: Export path on the NFS server
-  - `capacity`: Storage size (e.g., `200Gi`)
-
-**Functional Requirements**:
-- Volume names must match those referenced in `volumeMounts` within the container spec.
+Defines NFS persistent storage volumes with:
+- `name`: Volume name (must match `volumeMounts` in container spec)
+- `server`: NFS server address
+- `path`: Export path
+- `capacity`: Storage size (e.g., `200Gi`)
 
 ### `sources`
-
-**Purpose**: Configures event sources that trigger your application, enabling event-driven architectures.
-
-**Structure**:
+Configures Kafka event sources for event-driven applications:
 - `name`: Source name
-- `type`: Source type (currently `Kafka` is supported)
-- `bootstrapServers`: Array of Kafka broker addresses
-- `topic`: Array of Kafka topics to consume from
-- `kafkaAuth`: Authentication configuration
-  - `username`: Kafka username
-  - `passwordKey`: Reference to secret containing password
-
-**Functional Requirement**: When configured, your application receives events from the specified Kafka topics, enabling serverless event processing.
+- `type`: `Kafka`
+- `bootstrapServers`: Kafka broker addresses
+- `topic`: Topics to consume from
+- `kafkaAuth`: Username and password reference
 
 ## How to Use Capp
 
-This section provides step-by-step instructions for common Capp usage scenarios. These instructions assume the container-app-operator is already installed in your cluster.
+Step-by-step instructions for common scenarios (assumes the operator is installed).
 
 ### Step 1: Create a Basic Capp
 
@@ -128,31 +80,7 @@ Apply it with: `kubectl apply -f my-app.yaml`
 
 ### Step 2: Configure Autoscaling
 
-Choose the appropriate scaling metric for your workload:
-
-**For high-traffic APIs**:
-```yaml
-spec:
-  scaleMetric: rps
-```
-
-**For CPU-intensive workloads**:
-```yaml
-spec:
-  scaleMetric: cpu
-```
-
-**For memory-intensive applications**:
-```yaml
-spec:
-  scaleMetric: memory
-```
-
-**For concurrent request handling** (default):
-```yaml
-spec:
-  scaleMetric: concurrency
-```
+Set `spec.scaleMetric` to: `rps` (high-traffic APIs), `cpu` (CPU-intensive), `memory` (memory-intensive), or `concurrency` (default, concurrent requests).
 
 ### Step 3: Add a Custom Domain with TLS
 
@@ -167,8 +95,6 @@ spec:
 
 ### Step 4: Enable Elasticsearch Logging
 
-To automatically ship logs to Elasticsearch:
-
 ```yaml
 spec:
   logSpec:
@@ -179,16 +105,12 @@ spec:
     passwordSecret: es-password-secret
 ```
 
-First, create the secret:
+Create the secret first:
 ```bash
-kubectl create secret generic es-password-secret \
-  --from-literal=password='your-es-password' \
-  -n my-namespace
+kubectl create secret generic es-password-secret --from-literal=password='your-password' -n my-namespace
 ```
 
 ### Step 5: Mount NFS Volumes
-
-To add persistent storage to your application:
 
 ```yaml
 spec:
@@ -212,8 +134,6 @@ spec:
 
 ### Step 6: Connect Kafka Event Sources
 
-To make your application event-driven:
-
 ```yaml
 spec:
   sources:
@@ -221,10 +141,8 @@ spec:
       type: Kafka
       bootstrapServers:
         - kafka-broker-1:9092
-        - kafka-broker-2:9092
       topic:
         - user-events
-        - order-events
       kafkaAuth:
         username: kafka-user
         passwordKey:
@@ -232,49 +150,30 @@ spec:
           key: password
 ```
 
-Create the Kafka secret:
+Create the secret:
 ```bash
-kubectl create secret generic kafka-secret \
-  --from-literal=password='your-kafka-password' \
-  -n my-namespace
+kubectl create secret generic kafka-secret --from-literal=password='your-password' -n my-namespace
 ```
 
-### Step 7: Manage Capp State
+### Step 7: Manage State and Check Status
 
-**To disable (suspend) an application**:
+**Disable/enable application**:
 ```bash
-kubectl patch capp my-app -n my-namespace --type=merge -p '{"spec":{"state":"disabled"}}'
+kubectl patch capp my-app -n my-namespace --type=merge -p '{"spec":{"state":"disabled"}}'  # suspend
+kubectl patch capp my-app -n my-namespace --type=merge -p '{"spec":{"state":"enabled"}}'   # resume
 ```
 
-**To re-enable an application**:
+**Check status**:
 ```bash
-kubectl patch capp my-app -n my-namespace --type=merge -p '{"spec":{"state":"enabled"}}'
+kubectl get capp my-app -n my-namespace              # basic status
+kubectl describe capp my-app -n my-namespace         # detailed status
 ```
 
-### Step 8: Check Capp Status
-
-**View basic status**:
-```bash
-kubectl get capp my-app -n my-namespace
-```
-
-**View detailed status**:
-```bash
-kubectl describe capp my-app -n my-namespace
-```
-
-**Check the status section** for:
-- `knativeObjectStatus`: Underlying Knative service status
-- `routeStatus`: Domain mapping and DNS record status
-- `loggingStatus`: Logging configuration status
-- `volumesStatus`: NFS volume status
-- `conditions`: Overall health conditions
+The status section includes: `knativeObjectStatus`, `routeStatus`, `loggingStatus`, `volumesStatus`, and `conditions`.
 
 ## Practical Examples
 
-### Example 1: Simple Web Application with Custom Domain
-
-This example deploys a web application with a custom domain, TLS, and RPS-based autoscaling:
+### Example 1: Web Application with Custom Domain
 
 ```yaml
 apiVersion: rcs.dana.io/v1alpha1
@@ -309,17 +208,9 @@ spec:
     routeTimeoutSeconds: 60
 ```
 
-**What this does**:
-- Deploys a containerized web application
-- Automatically scales based on requests per second
-- Accessible via `https://web.mycompany.com`
-- Automatic TLS certificate management
-- 60-second request timeout
-- Resource limits prevent overuse
+Deploys a web application with RPS-based autoscaling, custom HTTPS domain, and resource limits.
 
-### Example 2: Advanced Event-Driven Application
-
-This example shows a comprehensive setup with logging, persistent storage, and Kafka event processing:
+### Example 2: Event-Driven Application with Full Features
 
 ```yaml
 apiVersion: rcs.dana.io/v1alpha1
@@ -384,15 +275,7 @@ spec:
           key: password
 ```
 
-**What this does**:
-- Processes events from Kafka topics in real-time
-- Scales based on CPU utilization
-- Stores processed data on NFS persistent storage (500Gi)
-- Ships all logs to Elasticsearch for monitoring
-- Accessible via HTTPS for status/health checks
-- Resource limits ensure stable performance
-
-**Before applying, create the required secrets**:
+Event-driven processor with Kafka sources, CPU-based autoscaling, NFS persistent storage, and Elasticsearch logging. Create required secrets before applying:
 
 ```bash
 # Elasticsearch secret
