@@ -165,8 +165,6 @@ spec:
     tlsEnabled: true
 ```
 
-**Note**: Ensure the CappConfig in the operator namespace has the correct DNS configuration.
-
 ### Step 4: Enable Elasticsearch Logging
 
 To automatically ship logs to Elasticsearch:
