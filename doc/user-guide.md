@@ -406,27 +406,3 @@ kubectl create secret generic kafka-analytics-secret \
   -n analytics
 ```
 
-## Troubleshooting Tips
-
-**Application not scaling**:
-- Check if the CappConfig has the correct autoscale target values
-- Verify the scaleMetric is appropriate for your workload
-- Check the Knative autoscaler metrics
-
-**Custom domain not working**:
-- Verify CappConfig has correct DNS configuration
-- Check the DomainMapping status: `kubectl get domainmapping -n <namespace>`
-- Verify DNS records were created: `kubectl get cnamerecord -n <namespace>`
-
-**Logs not appearing in Elasticsearch**:
-- Verify Elasticsearch credentials in the secret
-- Check the SyslogNGFlow and SyslogNGOutput resources: `kubectl get syslogngflow,syslogngoutput -n <namespace>`
-- Ensure the logging-operator is running
-
-**Volume mount issues**:
-- Verify Knative has persistent volume support enabled
-- Check NFS server accessibility from the cluster
-- Verify the NfsPvc resource status: `kubectl get nfspvc -n <namespace>`
-
-For more detailed troubleshooting, installation instructions, and architecture information, refer to the [main README](../README.md).
-
