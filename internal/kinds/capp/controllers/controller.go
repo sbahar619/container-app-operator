@@ -78,7 +78,10 @@ func (r *CappReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&knativev1.Service{},
 			handler.EnqueueRequestsFromMapFunc(r.findCappFromEvent),
-			builder.WithPredicates(predicate.GenerationChangedPredicate{}),
+			// Status updates (e.g. LatestReadyRevisionName) use the status subresource
+			// and do not bump metadata.generation; reconcile on any RV change so Capp
+			// status stays in sync with the Knative Service.
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Watches(
 			&knativev1beta1.DomainMapping{},
