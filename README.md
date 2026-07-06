@@ -4,7 +4,7 @@ The `container-app-operator` is an operator that reconciles `Capp` CRs.
 
 `Capp` (or ContainerApp) provides a higher-level abstraction for deploying containerized Serverless workload, making it easier for end-users to deploy workloads on Kubernetes without being knowledgeable in Kubernetes concepts, while adhering to the standards required by the infrastructure and platform teams without any extra burden on the users.
 
-The operator uses open-source projects, such as [`knative-serving`](https://github.com/knative/serving), [`logging-operator`](https://github.com/kube-logging/logging-operator), [`nfspvc-operator`](https://github.com/dana-team/nfspvc-operator) and [`provider-dns`](https://github.com/dana-team/provider-dns) to create an abstraction for containerized workloads.
+The operator uses open-source projects, such as [`knative-serving`](https://github.com/knative/serving), [`knative-eventing`](https://github.com/knative/eventing), [`logging-operator`](https://github.com/kube-logging/logging-operator), and [`nfspvc-operator`](https://github.com/dana-team/nfspvc-operator) to create an abstraction for containerized workloads.
 
 ## Run Container Service
 
@@ -14,15 +14,15 @@ The `container-app-operator` project can work as a standalone solution, but is m
 
 ![Architecture](images/capp-architecture.svg)
 
-1. The `capp controller` reconciles the `Capp` CRs in the cluster and creates (if needed) a `Knative Service` (`ksvc`) CR, a `DommainMapping` CR, and `Flow` & `Output` CRs for every Capp.
+1. The `capp controller` reconciles the `Capp` CRs in the cluster and creates (if needed) a `Knative Service` (`ksvc`) CR, a `DomainMapping` CR, `Flow` & `Output` CRs, and event source CRs (`PingSource`, `KafkaSource`) for every Capp.
 
-2. The `knative controller` reconciles the `ksvc` CRs in the cluster and controls the lifecycle an autoscaler and pods relevant to the `ksvc`.
+2. The `knative controller` reconciles the `ksvc` CRs in the cluster and controls the lifecycle of an autoscaler and pods relevant to the `ksvc`.
 
 3. The `nfspvc-operator controller` reconciles the `NFSPVC` CRs in the cluster and creates `PVC` and `PVs` with an external NFS storage configuration (bring your own NFS).
 
-4. The `provider-dns` is a `Crossplane Provider` which reconciles the DNS Record CRs in the cluster and creates DNS Records in the pre-configured DNS provider (bring your own DNS provider).
+4. The `logging-operator controller` reconciles the `Flow` and `Output` CRs in the cluster and collects logs from the pods' `stdout` and sends them to a pre-existing `Elasticsearch` index (bring your own indexes).
 
-5. The `logging-operator controller` reconciles the `Flow` and `Output` CRs in the cluster and collects logs from the pods' `stdout` and sends them to a pre-existing `Elasticsearch` index (bring your own indexes).
+5. The `knative eventing` controller reconciles event source CRs (`PingSource`, `KafkaSource`) and delivers events to the Capp `Knative Service`.
 
 
 ## Feature Highlights
